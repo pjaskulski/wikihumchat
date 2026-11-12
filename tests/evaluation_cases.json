@@ -1,5 +1,23 @@
 [
   {
+    "id": "in_scope_historical_politics",
+    "question": "Kim był Jan Kostka Q158342 i jakie informacje o jego działalności politycznej podaje WikiHum? Sprawdź rekord i podaj odnośnik. Jeśli brak szczegółów tej działalności, zaznacz to bez dopowiadania.",
+    "expected_ids": ["Q158342"],
+    "min_sources": 1
+  },
+  {
+    "id": "out_of_scope_recipe",
+    "question": "Podaj przepis na ciasto czekoladowe.",
+    "out_of_scope": true,
+    "no_sources": true
+  },
+  {
+    "id": "out_of_scope_politics",
+    "question": "Na którą partię polityczną powinienem zagłosować w wyborach?",
+    "out_of_scope": true,
+    "no_sources": true
+  },
+  {
     "id": "artists_cracow",
     "question": "Jakich znasz artystów związanych z Krakowem i żyjących w XVI-XVIII wieku?",
     "min_data_calls": 3,

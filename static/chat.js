@@ -1,3 +1,4 @@
+import { language, mountLanguage, setText, setTranslatedAttribute, translate } from "./i18n.js";
 import { externalLink, renderMarkdown, safeUrl } from "./markdown.js";
 import { readEventReply } from "./events.js";
 
@@ -8,7 +9,7 @@ function queryProgress(document) {
   details.className = "query-progress";
   details.open = true;
   const summary = document.createElement("summary");
-  summary.textContent = "Przebieg kwerendy — w toku";
+  setText(summary, "Przebieg kwerendy — w toku");
   const list = document.createElement("ol");
   list.id = `query-steps-${++progressSequence}`;
   const toggle = document.createElement("button");
@@ -28,7 +29,7 @@ function queryProgress(document) {
     for (const [id, row] of rows) row.item.hidden = compact && !recentIds.has(id);
     toggle.hidden = finished || rows.size <= 3;
     toggle.setAttribute("aria-expanded", String(showAll));
-    toggle.textContent = showAll ? "Pokaż ostatnie 3 etapy" : `Pokaż cały przebieg (${rows.size})`;
+    setText(toggle, showAll ? "Pokaż ostatnie 3 etapy" : `Pokaż cały przebieg (${rows.size})`);
   }
   toggle.addEventListener("click", () => {
     showAll = !showAll;
@@ -47,10 +48,10 @@ function queryProgress(document) {
         item.value = event.id;
         const title = document.createElement("span");
         title.className = "query-step-title";
-        title.title = event.message.slice(0, 300);
+        setTranslatedAttribute(title, "title", event.message.slice(0, 300));
         const label = document.createElement("span");
         label.className = "query-step-label";
-        label.textContent = event.message.slice(0, 300);
+        setText(label, event.message.slice(0, 300));
         const spinner = document.createElement("span");
         spinner.className = "query-step-spinner";
         spinner.setAttribute("aria-hidden", "true");
@@ -68,19 +69,19 @@ function queryProgress(document) {
       const seconds = typeof event.seconds === "number" && Number.isFinite(event.seconds)
         && event.seconds >= 0 ? `${event.seconds.toLocaleString("pl-PL", { maximumFractionDigits: 2 })} s` : "";
       const label = { running: "W toku…", done: "Zakończono", error: "Błąd", blocked: "Wymaga weryfikacji" }[event.state];
-      row.state.textContent = seconds ? `${label} · ${seconds}` : label;
+      setText(row.state, seconds ? `${label} · ${seconds}` : label);
       refresh();
       return true;
     },
     finish(failed = false) {
       finished = true;
-      summary.textContent = failed ? "Przebieg nieudanej kwerendy" : "Przebieg kwerendy";
+      setText(summary, failed ? "Przebieg nieudanej kwerendy" : "Przebieg kwerendy");
       details.open = false;
       for (const row of rows.values()) {
         row.spinner.hidden = true;
         if (row.item.dataset.state === "running") {
           row.item.dataset.state = "unknown";
-          row.state.textContent = "Nie otrzymano zakończenia etapu";
+          setText(row.state, "Nie otrzymano zakończenia etapu");
         }
       }
       refresh();
@@ -88,9 +89,10 @@ function queryProgress(document) {
   };
 }
 
-// Stan rozmowy pozostaje w domknięciu. Nie używamy cookies ani Web Storage.
+// Stan rozmowy pozostaje w domknięciu; nie zapisujemy jej w cookies ani Web Storage.
 export function mountChat(document, fetchImpl = (...args) => document.defaultView.fetch(...args)) {
   const window = document.defaultView;
+  const locale = mountLanguage(document);
   const root = document.getElementById("chat-app");
   const chatUrl = root.dataset.chatUrl || "api/chat";
   const exportUrl = root.dataset.exportUrl || "api/export/pdf";
@@ -108,6 +110,9 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
   const errorBox = document.getElementById("chat-error");
   const count = document.getElementById("character-count");
   const examples = [...document.querySelectorAll("[data-question]")];
+  const moreExamples = document.getElementById("more-examples");
+  const examplesDialog = document.getElementById("examples-dialog");
+  const closeExamplesButton = document.getElementById("close-examples");
   const limit = Number(root.dataset.questionLimit);
   const timeout = Number(root.dataset.requestTimeout);
   let history = [];
@@ -119,7 +124,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
 
   function updateInput() {
     const length = Array.from(input.value).length;
-    count.textContent = `${length} / ${limit}`;
+    setText(count, `${length} / ${limit}`);
     count.classList.toggle("is-over-limit", length > limit);
     input.setAttribute("aria-invalid", String(length > limit));
     send.disabled = Boolean(active) || !input.value.trim() || length > limit;
@@ -132,6 +137,8 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
     log.setAttribute("aria-busy", String(busy));
     status.hidden = busy || !statusText.textContent;
     for (const example of examples) example.disabled = busy;
+    moreExamples.disabled = busy;
+    if (busy && examplesDialog.open) closeExamples(true);
     updateInput();
   }
 
@@ -141,12 +148,12 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
     const avatar = document.createElement("span");
     avatar.className = "message-avatar";
     avatar.setAttribute("aria-hidden", "true");
-    avatar.textContent = role === "user" ? "TY" : "WH";
+    setText(avatar, role === "user" ? "TY" : "WH");
     const main = document.createElement("div");
     main.className = "message-main";
     const author = document.createElement("h3");
     author.className = "message-author";
-    author.textContent = role === "user" ? "Ty" : "WikiHum";
+    setText(author, role === "user" ? "Ty" : "WikiHum");
     const body = document.createElement("div");
     body.className = "message-body";
     if (role === "user") body.textContent = text;
@@ -160,7 +167,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
       section.className = "message-sources";
       const title = document.createElement("summary");
       title.className = "sources-title";
-      title.textContent = "Rekordy wykorzystane w odpowiedzi";
+      setText(title, "Rekordy wykorzystane w odpowiedzi");
       const list = document.createElement("ul");
       list.className = "source-list";
       for (const source of validSources) {
@@ -174,7 +181,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
     for (const warning of warnings) {
       const note = document.createElement("p");
       note.className = "message-warning";
-      note.textContent = warning;
+      setText(note, warning);
       main.append(note);
     }
     article.append(avatar, main);
@@ -208,7 +215,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
     const timer = window.setTimeout(() => { timedOut = true; controller.abort(); }, timeout);
     active = { id, controller, timer };
     setBusy(true);
-    statusText.textContent = "Wyszukiwanie w WikiHum…";
+    setText(statusText, "Wyszukiwanie w WikiHum…");
     scroll.scrollTop = scroll.scrollHeight;
     try {
       const response = await fetchImpl(chatUrl, {
@@ -217,7 +224,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
         credentials: "same-origin",
         cache: "no-store",
         signal: controller.signal,
-        body: JSON.stringify({ message: question, history }),
+        body: JSON.stringify({ message: question, history, language: language(document) }),
       });
       const streamed = response.ok && response.headers?.get("content-type")?.includes("text/event-stream");
       const data = streamed ? await readEventReply(response, event => {
@@ -247,7 +254,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
           : `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
         const timing = document.createElement("p");
         timing.className = "message-duration";
-        timing.textContent = `Czas odpowiedzi: ${elapsed}`;
+        setText(timing, `Czas odpowiedzi: ${elapsed}`);
         answer.querySelector(".message-main").append(timing);
       }
       log.append(answer);
@@ -257,11 +264,11 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
         .map(source => `[${source.id}](${source.url})`);
       const notes = data.warnings.filter(warning => typeof warning === "string");
       const exportedAnswer = data.answer
-        + (notes.length ? `\n\n## Uwagi aplikacji\n${notes.map(note => `- ${note}`).join("\n")}` : "")
-        + (sourceLinks.length ? `\n\n## Rekordy wykorzystane w odpowiedzi\n${sourceLinks.join(", ")}` : "");
+        + (notes.length ? `\n\n## ${translate(document, "Uwagi aplikacji")}\n${notes.map(note => `- ${translate(document, note)}`).join("\n")}` : "")
+        + (sourceLinks.length ? `\n\n## ${translate(document, "Rekordy wykorzystane w odpowiedzi")}\n${sourceLinks.join(", ")}` : "");
       exportMessages.push({ role: "user", content: question }, { role: "assistant", content: exportedAnswer });
       input.value = "";
-      statusText.textContent = "Odpowiedź gotowa. Możesz zadać pytanie uzupełniające.";
+      setText(statusText, "Odpowiedź gotowa. Możesz zadać pytanie uzupełniające.");
       // Po przeniesieniu i zwinięciu przebiegu mierz aktualne położenie odpowiedzi.
       scroll.scrollTop += answer.getBoundingClientRect().top
         - scroll.getBoundingClientRect().top - scroll.clientTop;
@@ -278,14 +285,14 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
           : error.message || "Nie udało się uzyskać odpowiedzi. Spróbuj ponownie.";
       const errorMessage = document.createElement("p");
       errorMessage.className = "chat-error-message";
-      errorMessage.textContent = detail;
+      setText(errorMessage, detail);
       errorBox.replaceChildren(errorMessage);
       if (hasTrace) {
         trace.finish(true);
         errorBox.append(trace.element);
       }
       errorBox.hidden = false;
-      statusText.textContent = "Nie udało się uzyskać odpowiedzi.";
+      setText(statusText, "Nie udało się uzyskać odpowiedzi.");
     } finally {
       window.clearTimeout(timer);
       if (id === generation) {
@@ -297,6 +304,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
   }
 
   function newConversation() {
+    if (examplesDialog.open) closeExamples(true);
     generation += 1;
     exportGeneration += 1;
     if (active) {
@@ -306,10 +314,10 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
     active = null;
     exportController?.abort();
     exportController = null;
-    exportButton.textContent = "Pobierz PDF";
+    setText(exportButton, "Pobierz PDF");
     exportMessages = [];
     exportError.hidden = true;
-    exportError.textContent = "";
+    setText(exportError, "");
     history = [];
     log.replaceChildren();
     welcome.hidden = false;
@@ -317,7 +325,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
     errorBox.textContent = "";
     input.value = "";
     setBusy(false);
-    statusText.textContent = "";
+    setText(statusText, "");
     status.hidden = true;
     scroll.scrollTop = 0;
     input.focus({ preventScroll: true });
@@ -334,7 +342,31 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
     if (active) return;
     input.value = event.currentTarget.dataset.question;
     updateInput();
+    if (examplesDialog.open) closeExamples(true);
     input.focus({ preventScroll: true });
+  }
+
+  function openExamples() {
+    if (!active && !examplesDialog.open) examplesDialog.showModal();
+  }
+
+  function closeExamples(focusInput = false) {
+    examplesDialog.close();
+    if (!focusInput) moreExamples.focus({ preventScroll: true });
+  }
+
+  function onCloseExamples() { closeExamples(); }
+
+  function onCancelExamples(event) {
+    event.preventDefault();
+    closeExamples();
+  }
+
+  function onDialogClick(event) {
+    if (event.target !== examplesDialog) return;
+    const rect = examplesDialog.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right
+        || event.clientY < rect.top || event.clientY > rect.bottom) closeExamples();
   }
 
   async function exportPdf() {
@@ -343,7 +375,7 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
     const id = exportGeneration;
     exportController = controller;
     exportError.hidden = true;
-    exportButton.textContent = "Przygotowywanie PDF…";
+    setText(exportButton, "Przygotowywanie PDF…");
     updateInput();
     const timer = window.setTimeout(() => controller.abort(), 30_000);
     try {
@@ -373,15 +405,15 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
       window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     } catch (error) {
       if (id !== exportGeneration) return;
-      exportError.textContent = controller.signal.aborted ? "Przekroczono czas przygotowania PDF. Spróbuj ponownie."
+      setText(exportError, controller.signal.aborted ? "Przekroczono czas przygotowania PDF. Spróbuj ponownie."
         : error instanceof TypeError ? "Nie udało się pobrać PDF. Sprawdź połączenie."
-          : String(error.message || "Nie udało się przygotować PDF.").slice(0, 1000);
+          : String(error.message || "Nie udało się przygotować PDF.").slice(0, 1000));
       exportError.hidden = false;
     } finally {
       window.clearTimeout(timer);
       if (exportController === controller) {
         exportController = null;
-        exportButton.textContent = "Pobierz PDF";
+        setText(exportButton, "Pobierz PDF");
         updateInput();
       }
     }
@@ -392,6 +424,11 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
   input.addEventListener("keydown", onKeyDown);
   reset.addEventListener("click", newConversation);
   exportButton.addEventListener("click", exportPdf);
+  moreExamples.addEventListener("click", openExamples);
+  closeExamplesButton.addEventListener("click", onCloseExamples);
+  examplesDialog.addEventListener("cancel", onCancelExamples);
+  examplesDialog.addEventListener("click", onDialogClick);
+  moreExamples.hidden = typeof examplesDialog.showModal !== "function";
   for (const example of examples) example.addEventListener("click", selectExample);
   input.disabled = false;
   reset.disabled = false;
@@ -402,6 +439,8 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
 
   return {
     destroy() {
+      locale.destroy();
+      if (examplesDialog.open) closeExamples(true);
       generation += 1;
       exportGeneration += 1;
       active?.controller.abort();
@@ -412,6 +451,10 @@ export function mountChat(document, fetchImpl = (...args) => document.defaultVie
       input.removeEventListener("keydown", onKeyDown);
       reset.removeEventListener("click", newConversation);
       exportButton.removeEventListener("click", exportPdf);
+      moreExamples.removeEventListener("click", openExamples);
+      closeExamplesButton.removeEventListener("click", onCloseExamples);
+      examplesDialog.removeEventListener("cancel", onCancelExamples);
+      examplesDialog.removeEventListener("click", onDialogClick);
       for (const example of examples) example.removeEventListener("click", selectExample);
       window.removeEventListener("pageshow", onPageShow);
     },

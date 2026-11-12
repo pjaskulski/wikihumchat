@@ -68,7 +68,7 @@ def test_chat_page_loads_local_assets_and_only_public_limits():
         assert "private-secret" not in html
         parser = Assets()
         parser.feed(html)
-        assert len(parser.urls) == 2
+        assert len(parser.urls) == 3
         for url in parser.urls:
             assert url.startswith("/static/")
             assert client.get(url).status_code == 200

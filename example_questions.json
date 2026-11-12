@@ -1,0 +1,50 @@
+[
+  {
+    "question": "Znajdź w WikiHum osoby o imieniu i nazwisku Jan Kostka. Podaj odnośniki do rekordów.",
+    "question_en": "Find people named Jan Kostka in WikiHum. Provide links to their records."
+  },
+  {
+    "question": "Kim był Stanisław Bodniak?",
+    "question_en": "Who was Stanisław Bodniak?"
+  },
+  {
+    "question": "Jakich znasz artystów związanych z Krakowem i żyjących w XVI-XVIII wieku?",
+    "question_en": "Which artists associated with Kraków lived in the 16th–18th centuries?"
+  },
+  {
+    "question": "Jakie miejscowości będące własnością monarszą znajdowały się w powiecie proszowickim?",
+    "question_en": "Which settlements under royal ownership were located in Proszowice County?"
+  },
+  {
+    "question": "Kim był Mikołaj Kopernik?",
+    "question_en": "Who was Nicolaus Copernicus?"
+  },
+  {
+    "question": "Wymień powstańców listopadowych.",
+    "question_en": "List participants in the November Uprising."
+  },
+  {
+    "question": "Jakie informacje o Gdańsku zawiera WikiHum?",
+    "question_en": "What information about Gdańsk does WikiHum contain?"
+  },
+  {
+    "question": "Znajdź w WikiHum miejscowości o nazwie Nowa Wieś i pomóż je rozróżnić.",
+    "question_en": "Find settlements named Nowa Wieś in WikiHum and help distinguish them."
+  },
+  {
+    "question": "Jakie informacje o Janie Długoszu zawiera WikiHum?",
+    "question_en": "What information about Jan Długosz does WikiHum contain?"
+  },
+  {
+    "question": "Jakie miejscowości odnotowane w WikiHum były własnością duchowną w historycznym powiecie proszowickim?",
+    "question_en": "Which settlements recorded in WikiHum were under ecclesiastical ownership in the historical Proszowice County?"
+  },
+  {
+    "question": "Jakich drukarzy związanych z Krakowem odnotowano w WikiHum?",
+    "question_en": "Which printers associated with Kraków are recorded in WikiHum?"
+  },
+  {
+    "question": "Jakie informacje o historycznej przynależności administracyjnej Proszowic podaje WikiHum?",
+    "question_en": "What information does WikiHum provide about the historical administrative affiliations of Proszowice?"
+  }
+]

@@ -4,26 +4,36 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>WikiHum Chat</title>
-    <meta name="description" content="Rozmowa z danymi historycznej bazy wiedzy WikiHum.">
+    <meta name="description" content="Rozmowa z danymi historycznej bazy wiedzy WikiHum." data-i18n-content="Rozmowa z danymi historycznej bazy wiedzy WikiHum.">
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script type="module" src="{{ url_for('static', filename='chat.js') }}"></script>
   </head>
   <body>
-    <a class="skip-link" href="#question">Przejdź do pytania</a>
+    <a class="skip-link" href="#question" data-i18n="Przejdź do pytania">Przejdź do pytania</a>
     <header class="site-header">
       <div class="header-inner">
-        <a class="wordmark" href="{{ url_for('index') }}" aria-label="WikiHum Chat — strona główna">
+        <a class="wordmark" href="{{ url_for('index') }}" aria-label="WikiHum Chat — strona główna" data-i18n-aria-label="WikiHum Chat — strona główna">
           <img class="brand-logo" src="{{ url_for('static', filename='image/logo-wiki.png') }}"
                alt="" width="371" height="371">
           <span>WikiHum <span class="wordmark-light">Chat</span></span>
         </a>
-        <nav aria-label="Odnośniki informacyjne">
-          <a href="https://wikihum.lab.dariah.pl/" target="_blank" rel="noopener noreferrer">Baza WikiHum <span aria-hidden="true">↗</span><span class="sr-only"> (nowa karta)</span></a>
+        <nav aria-label="Baza WikiHum i ustawienia wyglądu" data-i18n-aria-label="Baza WikiHum i ustawienia wyglądu">
+          <a href="https://wikihum.lab.dariah.pl/" target="_blank" rel="noopener noreferrer"><span data-i18n="Baza WikiHum">Baza WikiHum</span> <span aria-hidden="true">↗</span><span class="sr-only" data-i18n=" (nowa karta)"> (nowa karta)</span></a>
+          <div id="language-switch" class="language-switch" role="group" aria-label="Język interfejsu" data-i18n-aria-label="Język interfejsu" hidden>
+            <button type="button" data-language="pl" lang="pl" aria-label="Polski" aria-pressed="true">PL</button>
+            <span aria-hidden="true">/</span>
+            <button type="button" data-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
+          </div>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Włącz tryb nocny" title="Włącz tryb nocny" hidden>
+            <svg data-theme-icon="moon" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.3A8.7 8.7 0 0 1 10.7 3.4 8.8 8.8 0 1 0 20.6 13.3Z"/></svg>
+            <svg data-theme-icon="sun" aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg>
+          </button>
         </nav>
         <img class="institution-logo" src="{{ url_for('static', filename='image/logo-ihpan.png') }}"
-             alt="Instytut Historii PAN" width="77" height="100">
+             alt="Instytut Historii PAN" data-i18n-alt="Instytut Historii PAN" width="77" height="100">
       </div>
     </header>
 
@@ -31,52 +41,45 @@
           data-request-timeout="{{ request_timeout_ms }}"
           data-chat-url="{{ url_for('chat') }}" data-export-url="{{ url_for('export_pdf') }}">
       <section class="intro" aria-labelledby="page-title">
-        <h1 id="page-title">Zapytaj <span>WikiHum</span></h1>
-        <p class="intro-description">Historyczną bazę wiedzy o osobach i miejscowościach</p>
+        <h1 id="page-title"><span data-i18n="Zapytaj">Zapytaj</span> <span>WikiHum</span></h1>
+        <p class="intro-description" data-i18n="Historyczną bazę wiedzy o osobach i miejscowościach">Historyczną bazę wiedzy o osobach i miejscowościach</p>
       </section>
 
       <section class="chat-panel" aria-labelledby="conversation-title">
         <div class="panel-header">
           <div class="panel-title">
             <span class="panel-rule" aria-hidden="true"></span>
-            <h2 id="conversation-title">Bieżąca rozmowa</h2>
+            <h2 id="conversation-title" data-i18n="Bieżąca rozmowa">Bieżąca rozmowa</h2>
           </div>
           <div class="panel-actions">
-            <button id="export-pdf" class="button-quiet" type="button" disabled hidden>Pobierz PDF</button>
+            <button id="export-pdf" class="button-quiet" type="button" disabled hidden data-i18n="Pobierz PDF">Pobierz PDF</button>
             <button id="new-conversation" class="button-quiet" type="button" disabled>
-              <span class="plus-icon" aria-hidden="true">+</span> Nowa rozmowa
+              <span class="plus-icon" aria-hidden="true">+</span> <span data-i18n="Nowa rozmowa">Nowa rozmowa</span>
             </button>
           </div>
         </div>
         <p id="export-error" class="export-error" role="alert" hidden></p>
 
-        <div id="conversation-scroll" class="conversation-scroll" tabindex="0" aria-label="Obszar rozmowy">
+        <div id="conversation-scroll" class="conversation-scroll" tabindex="0" aria-label="Obszar rozmowy" data-i18n-aria-label="Obszar rozmowy">
           <div id="welcome" class="welcome">
             <div class="welcome-symbol" aria-hidden="true">
               <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 5h18v22l-9-4-9 4V5Z"/><path d="M12 11h8M12 16h8"/></svg>
             </div>
-            <p class="welcome-title">Od czego rozpocząć kwerendę?</p>
-            <p class="welcome-description">Wpisz własne pytanie lub wybierz przykład dotyczący danych obecnych w WikiHum.</p>
-            <div class="examples" aria-label="Przykładowe pytania">
-              <button class="example" type="button" data-question="Znajdź w WikiHum osoby o imieniu i nazwisku Jan Kostka. Podaj odnośniki do rekordów." disabled>
-                <span>Znajdź osoby o imieniu i nazwisku Jan Kostka.</span>
+            <p class="welcome-title" data-i18n="Od czego rozpocząć kwerendę?">Od czego rozpocząć kwerendę?</p>
+            <p class="welcome-description" data-i18n="Wpisz własne pytanie lub wybierz jeden z przykładów">Wpisz własne pytanie lub wybierz jeden z przykładów</p>
+            <div class="examples" aria-label="Przykładowe pytania" data-i18n-aria-label="Przykładowe pytania">
+              {% for item in example_questions[:4] %}
+              <button class="example" type="button" data-question="{{ item.question }}" data-question-pl="{{ item.question }}" data-question-en="{{ item.question_en }}" disabled>
+                <span data-example-text>{{ item.question }}</span>
                 <span class="example-arrow" aria-hidden="true">↗</span>
               </button>
-              <button class="example" type="button" data-question="Kim był Stanisław Bodniak?" disabled>
-                <span>Kim był Stanisław Bodniak?</span>
-                <span class="example-arrow" aria-hidden="true">↗</span>
-              </button>
-              <button class="example" type="button" data-question="Jakich znasz artystów związanych z Krakowem i żyjących w XVI-XVIII wieku?" disabled>
-                <span>Jakich znasz artystów związanych z Krakowem i żyjących w XVI-XVIII wieku?</span>
-                <span class="example-arrow" aria-hidden="true">↗</span>
-              </button>
-              <button class="example" type="button" data-question="Jakie miejscowości będące własnością monarszą znajdowały się w powiecie proszowickim?" disabled>
-                <span>Jakie miejscowości będące własnością monarszą znajdowały się w powiecie proszowickim?</span>
-                <span class="example-arrow" aria-hidden="true">↗</span>
-              </button>
+              {% endfor %}
+            </div>
+            <div class="examples-toolbar">
+              <button id="more-examples" class="button-quiet" type="button" aria-haspopup="dialog" aria-controls="examples-dialog" disabled data-i18n="Więcej przykładów">Więcej przykładów</button>
             </div>
           </div>
-          <div id="messages" class="messages" role="log" aria-label="Wiadomości rozmowy"
+          <div id="messages" class="messages" role="log" aria-label="Wiadomości rozmowy" data-i18n-aria-label="Wiadomości rozmowy"
                aria-live="polite" aria-relevant="additions" aria-atomic="false"></div>
         </div>
 
@@ -87,33 +90,45 @@
           </div>
           <div id="chat-error" class="chat-error" role="alert" hidden></div>
           <form id="chat-form" class="composer">
-            <label for="question" class="sr-only">Twoje pytanie do WikiHum</label>
+            <label for="question" class="sr-only" data-i18n="Twoje pytanie do WikiHum">Twoje pytanie do WikiHum</label>
             <textarea id="question" name="question" rows="3" required disabled
-                      placeholder="Zadaj pytanie dotyczące danych WikiHum…"
+                      placeholder="Zadaj pytanie dotyczące danych WikiHum…" data-i18n-placeholder="Zadaj pytanie dotyczące danych WikiHum…"
                       aria-describedby="keyboard-hint character-count" autocomplete="off"></textarea>
             <div class="composer-actions">
-              <span id="keyboard-hint" class="keyboard-hint">Enter wysyła · Shift+Enter — nowy wiersz</span>
+              <span id="keyboard-hint" class="keyboard-hint" data-i18n="Enter wysyła · Shift+Enter — nowy wiersz">Enter wysyła · Shift+Enter — nowy wiersz</span>
               <div class="send-actions">
                 <span id="character-count" class="character-count">0 / {{ max_question_chars }}</span>
                 <button id="send-question" class="button-primary" type="submit" disabled>
-                  <span>Wyślij</span>
+                  <span data-i18n="Wyślij">Wyślij</span>
                   <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10h11M10 4l6 6-6 6"/></svg>
                 </button>
               </div>
             </div>
           </form>
-          <noscript><p class="noscript-message">Do korzystania z czatu potrzebna jest obsługa JavaScript w przeglądarce.</p></noscript>
+          <noscript><p class="noscript-message" data-i18n="Do korzystania z czatu potrzebna jest obsługa JavaScript w przeglądarce.">Do korzystania z czatu potrzebna jest obsługa JavaScript w przeglądarce.</p></noscript>
         </div>
       </section>
 
-      <aside class="information" aria-label="Informacje o odpowiedziach i rozmowie">
-        <p>Odpowiedzi generuje model językowy na podstawie danych WikiHum. Mogą zawierać błędy.</p>
+      <aside class="information" aria-label="Informacje o odpowiedziach i rozmowie" data-i18n-aria-label="Informacje o odpowiedziach i rozmowie">
+        <p data-i18n="Odpowiedzi generuje model językowy na podstawie danych WikiHum. Mogą zawierać błędy.">Odpowiedzi generuje model językowy na podstawie danych WikiHum. Mogą zawierać błędy.</p>
       </aside>
     </main>
+    <dialog id="examples-dialog" class="examples-dialog" aria-labelledby="examples-dialog-title" aria-describedby="examples-dialog-description">
+      <div class="examples-dialog-header">
+        <h2 id="examples-dialog-title" data-i18n="Przykładowe pytania">Przykładowe pytania</h2>
+        <button id="close-examples" class="button-quiet examples-dialog-close" type="button" aria-label="Zamknij listę przykładów" data-i18n-aria-label="Zamknij listę przykładów"><span aria-hidden="true">×</span></button>
+      </div>
+      <p id="examples-dialog-description" data-i18n="Wybierz pytanie, aby wstawić je do pola zapytania. Możesz je zmienić przed wysłaniem.">Wybierz pytanie, aby wstawić je do pola zapytania. Możesz je zmienić przed wysłaniem.</p>
+      <ul class="examples-dialog-list">
+        {% for item in example_questions %}
+        <li><button class="example" type="button" data-question="{{ item.question }}" data-question-pl="{{ item.question }}" data-question-en="{{ item.question_en }}" disabled><span data-example-text>{{ item.question }}</span><span class="example-arrow" aria-hidden="true">↗</span></button></li>
+        {% endfor %}
+      </ul>
+    </dialog>
     <footer class="site-footer">
-      <span>Pracownia Historii Cyfrowej</span>
+      <span data-i18n="Pracownia Historii Cyfrowej">Pracownia Historii Cyfrowej</span>
       <a class="footer-contact" href="mailto:lab.dariah@ihpan.edu.pl">
-        <span aria-hidden="true">✉</span> Skontaktuj się z nami
+        <span aria-hidden="true">✉</span> <span data-i18n="Skontaktuj się z nami">Skontaktuj się z nami</span>
       </a>
     </footer>
   </body>

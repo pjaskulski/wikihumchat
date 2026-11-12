@@ -1,3 +1,5 @@
+import { setTranslatedAttribute } from "./i18n.js";
+
 // Ograniczony Markdown budowany wyłącznie z węzłów DOM, bez interpretacji HTML.
 export function safeUrl(value) {
   try {
@@ -18,7 +20,7 @@ export function externalLink(document, label, href) {
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   link.referrerPolicy = "no-referrer";
-  link.setAttribute("aria-label", `${label} (nowa karta)`);
+  setTranslatedAttribute(link, "aria-label", `${label} (nowa karta)`);
   return link;
 }
 
@@ -88,7 +90,7 @@ function appendTable(document, fragment, headers, separators, rows) {
   wrapper.className = "markdown-table-scroll";
   wrapper.tabIndex = 0;
   wrapper.setAttribute("role", "region");
-  wrapper.setAttribute("aria-label", "Tabela odpowiedzi — możliwość przewijania w poziomie");
+  setTranslatedAttribute(wrapper, "aria-label", "Tabela odpowiedzi — możliwość przewijania w poziomie");
   const table = document.createElement("table");
   const head = document.createElement("thead");
   const body = document.createElement("tbody");

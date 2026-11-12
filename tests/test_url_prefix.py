@@ -38,7 +38,7 @@ def test_proxy_prefix_generates_assets_and_api_urls(proxy_client):
     page = proxy_client.get("/", base_url=BASE, headers=PROXY_HEADERS)
     assert page.status_code == 200
     text = page.get_data(as_text=True)
-    for path in ("static/chat.js", "static/style.css", "static/favicon.ico",
+    for path in ("static/chat.js", "static/theme.js", "static/style.css", "static/favicon.ico",
                  "static/image/logo-wiki.png", "static/image/logo-ihpan.png"):
         assert f"/wikihumchat/{path}" in text
         # Nginx usuwa prefiks przed przekazaniem żądania do WSGI.

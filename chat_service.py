@@ -14,6 +14,7 @@ from errors import ChatError, upstream_error
 from mcp_client import connect_mcp
 from model_client import ModelClient
 from progress import Progress
+from scope_policy import SCOPE_TOOL, scope_refusal
 from tool_calls import ToolCallProblem, prepare_tool_calls
 from result_sets import VERIFY_TOOL, result_statistics, verify_result_set
 from query_memory import QueryMemory, READ_TOOL
@@ -28,17 +29,34 @@ ENTITY_ID = re.compile(r"\b[QP][1-9][0-9]*\b")
 SYSTEM_PROMPT = (Path(__file__).resolve().parent / "prompts/system.txt").read_text("utf-8")
 
 
+def response_language_instruction(language):
+    # Wyłącznie stałe wartości; język jest walidowany przed otwarciem połączeń.
+    if language == "en":
+        return (
+            "\n\nResponse language selected in the application: English (en). "
+            "Write the answer, explanatory text and additional table headings in English, "
+            "even if the question, previous conversation or retrieved records are in Polish. "
+            "Keep original personal names, place names, source titles, identifiers and "
+            "source quotations unchanged. Do not translate or invent source evidence. "
+            "For prepare_record_list, use English headings for additional columns; "
+            "name_heading still uses the values allowed by its schema. "
+            "This language setting does not change the WikiHum scope or evidence requirements."
+        )
+    return "\n\nJęzyk odpowiedzi wybrany w aplikacji: polski (pl). Odpowiadaj po polsku."
+
+
 def requests_complete_listing(question):
     return bool(re.search(
         r"\b(?:(?:pełn|kompletn)(?:y|a|ą|e|ego|ej|ych|ym|ymi)|wszyst(?:kich|kie|cy|ko|kim|kimi))\b",
         question, re.I,
-    ))
+    ) or re.search(r"\b(?:all|complete|full|entire|exhaustive)\b", question, re.I))
 
 
 def requests_examples(question):
     if requests_complete_listing(question):
         return False
-    return bool(re.search(r"\b(?:podaj|pokaż|wymień)\s+(?:kilka\s+)?przykład", question, re.I))
+    return bool(re.search(r"\b(?:podaj|pokaż|wymień)\s+(?:kilka\s+)?przykład", question, re.I)
+                or re.search(r"\b(?:give|show|list|provide)\s+(?:me\s+)?(?:(?:a few|some)\s+)?examples?\b", question, re.I))
 
 
 def item_ids(value, pattern=ITEM_ID):
@@ -55,7 +73,7 @@ def item_ids(value, pattern=ITEM_ID):
     return result
 
 
-def summary_messages(messages, question, history, *, table_ready=False):
+def summary_messages(messages, question, history, *, table_ready=False, language="pl"):
     """Zachowaj wyniki, ale nie kontynuuj protokołu wywołań narzędzi."""
     calls = {
         call["id"]: call["function"]
@@ -81,7 +99,7 @@ def summary_messages(messages, question, history, *, table_ready=False):
             "\n\nTeraz wykonujesz wyłącznie syntezę tekstową. Kwerendy WikiHum zostały "
             "już wykonane przez aplikację; dostępne wyniki znajdują się w polu "
             "tool_results przekazanego obiektu JSON. Nie wywołuj kolejnych narzędzi. "
-            "Zwróć niepustą odpowiedź po polsku na pytanie z pola question na podstawie "
+            "Zwróć niepustą odpowiedź w wybranym języku na pytanie z pola question na podstawie "
             "tych wyników. Na pytanie o osoby lub obiekty wymień ich nazwiska lub nazwy "
             "z danymi odpowiadającymi warunkom pytania; sam licznik lub komentarz "
             "metodologiczny nie zastępuje wykazu. Opis może potwierdzać zawód i związek "
@@ -95,7 +113,7 @@ def summary_messages(messages, question, history, *, table_ready=False):
             " Jeśli prepare_record_list zwróciło table_ready=true, tabela powstaje "
             "w aplikacji: zamiast nazwisk i wierszy użyj [[WIKIHUM_RECORD_LIST]] "
             "w osobnym akapicie. Dodaj tylko krótkie, potwierdzone wprowadzenie lub uwagi."
-        )},
+        ) + response_language_instruction(language)},
         {"role": "user", "content": json.dumps({
             "question": question, "conversation_history": history, "tool_results": evidence,
         }, ensure_ascii=False)},
@@ -103,8 +121,11 @@ def summary_messages(messages, question, history, *, table_ready=False):
 
 
 def validate_request(payload, settings):
-    if not isinstance(payload, dict) or set(payload) - {"message", "history"}:
+    if not isinstance(payload, dict) or set(payload) - {"message", "history", "language"}:
         raise ChatError("invalid_request", "Prześlij obiekt z polami message i history.", 400)
+    language = payload.get("language", "pl")
+    if not isinstance(language, str) or language not in {"pl", "en"}:
+        raise ChatError("invalid_language", "Wybierz obsługiwany język: pl lub en.", 400)
     message = payload.get("message")
     if not isinstance(message, str) or not message.strip():
         raise ChatError("invalid_message", "Wpisz niepuste pytanie.", 400)
@@ -146,19 +167,34 @@ class ChatService:
     async def reply(self, payload, *, on_progress=None):
         started = monotonic()
         question, history, trimmed = validate_request(payload, self.settings)
+        language = payload.get("language", "pl")
         progress = Progress(on_progress)
         try:
             async with asyncio.timeout(self.settings.chat_timeout_seconds):
                 async with self.model_factory(self.settings) as model:
-                    # Oddzielny kontekst łączenia kończy się przed pętlą rozmowy.
-                    async with AsyncExitStack() as connections:
-                        with progress.step("Łączenie z WikiHum"):
-                            mcp = await connections.enter_async_context(
-                                self.mcp_factory(self.settings),
-                            )
-                        answer, sources, limited, verified_ids, unchecked_listing = await self._conversation(
-                            model, mcp, question, history, progress,
+                    with progress.step("Sprawdzanie zakresu pytania"):
+                        in_scope = await model.check_scope(question, history)
+                    if type(in_scope) is not bool:
+                        raise ChatError("scope_invalid_response", "Nie udało się określić zakresu pytania. "
+                                        "Spróbuj sformułować je inaczej.")
+                    if not in_scope:
+                        answer, sources, limited, verified_ids, unchecked_listing = (
+                            scope_refusal(language), [], False, None, False,
                         )
+                        logging.getLogger(__name__).info(
+                            "chat_scope_refusal diagnostic_id=%s",
+                            getattr(model, "diagnostic_id", "unavailable"),
+                        )
+                    else:
+                        # MCP inicjalizujemy dopiero po pozytywnej ocenie zakresu.
+                        async with AsyncExitStack() as connections:
+                            with progress.step("Łączenie z WikiHum"):
+                                mcp = await connections.enter_async_context(
+                                    self.mcp_factory(self.settings),
+                                )
+                            answer, sources, limited, verified_ids, unchecked_listing = await self._conversation(
+                                model, mcp, question, history, progress, language=language,
+                            )
         except TimeoutError:
             raise ChatError(
                 "chat_timeout", "Przekroczono czas obsługi pytania. Spróbuj węższej kwerendy.",
@@ -197,12 +233,12 @@ class ChatService:
                 "Wyniki kwerendy przekroczyły limit kontekstu. Zadaj węższe pytanie.", 413,
             )
 
-    async def _conversation(self, model, mcp, question, history, progress):
+    async def _conversation(self, model, mcp, question, history, progress, *, language="pl"):
         with progress.step("Pobieranie listy narzędzi WikiHum"):
             tools = await mcp.list_tools()
-        if any(tool.name in {VERIFY_TOOL.name, READ_TOOL.name, PREPARE_TOOL.name} for tool in tools):
+        if any(tool.name in {VERIFY_TOOL.name, READ_TOOL.name, PREPARE_TOOL.name, SCOPE_TOOL.name} for tool in tools):
             raise ChatError("tool_name_conflict", "Konflikt nazw narzędzi serwera MCP.")
-        tools = [*tools, VERIFY_TOOL, READ_TOOL, PREPARE_TOOL]
+        tools = [*tools, VERIFY_TOOL, READ_TOOL, PREPARE_TOOL, SCOPE_TOOL]
         definitions = [{"type": "function", "function": {
             "name": tool.name, "description": tool.description or "",
             "parameters": tool.inputSchema,
@@ -226,6 +262,7 @@ class ChatService:
                 "kwerendy w celu znalezienia wszystkich osób ani pełnego licznika. "
                 "Niepewne przypadki pomiń lub oznacz konkretną niepewność, np. datowania."
             )
+        messages[0]["content"] += response_language_instruction(language)
         observed_ids = set()
         # Reguły MCP dopuszczają identyfikatory wskazane przez użytkownika.
         confirmed_ids = item_ids(
@@ -275,7 +312,9 @@ class ChatService:
                 with progress.step("Porządkowanie wcześniejszych wyników kwerendy"):
                     pass
             if table_ready:
-                model_messages = summary_messages(model_messages, question, history, table_ready=True)
+                model_messages = summary_messages(
+                    model_messages, question, history, table_ready=True, language=language,
+                )
             self._check_context(model_messages, [] if text_only else definitions)
             label = ("Przygotowywanie podsumowania" if text_only else
                      progress.analysis_message)
@@ -297,7 +336,7 @@ class ChatService:
                         text_only = True
                         packed, _ = memory.pack(messages, [], self.settings.chat_max_context_chars)
                         model_messages = summary_messages(packed, question, history,
-                                                          table_ready=rendered_table is not None)
+                                                          table_ready=rendered_table is not None, language=language)
                         self._check_context(model_messages, [])
                         label = "Przygotowywanie odpowiedzi z zebranych wyników"
                         logging.getLogger(__name__).warning(
@@ -314,7 +353,7 @@ class ChatService:
                         # źródłem zawsze są wiadomości z protokołem narzędzi.
                         packed, _ = memory.pack(messages, [], self.settings.chat_max_context_chars)
                         model_messages = summary_messages(packed, question, history,
-                                                          table_ready=rendered_table is not None)
+                                                          table_ready=rendered_table is not None, language=language)
                         self._check_context(model_messages, [])
                         label = "Przygotowywanie odpowiedzi z zebranych wyników"
                     else:
@@ -343,6 +382,8 @@ class ChatService:
                             "udanej kwerendy do danych WikiHum w tej turze. "
                             "Teraz wywołaj narzędzie sprawdzające dane dotyczące pytania, "
                             "np. get_statements dla wskazanego rekordu lub search_items. "
+                            "Jeżeli pytanie jest poza zakresem WikiHum, zamiast kwerendy "
+                            "wywołaj refuse_out_of_scope. "
                             "Nie odpowiadaj ponownie z historii ani wyłącznie z metadanych."
                         )
                         continue
@@ -461,6 +502,16 @@ class ChatService:
                     "Nie dodawaj nieobsługiwanych pól i zachowaj wymagane typy argumentów."
                 )
                 continue
+            if any(name == SCOPE_TOOL.name for name, _, _ in parsed):
+                # Rozstrzygnij przed wykonaniem całej rundy, także gdy model
+                # zaproponował odmowę razem z wywołaniami zewnętrznymi.
+                with progress.step("Sprawdzanie zakresu pytania"):
+                    pass
+                logging.getLogger(__name__).info(
+                    "chat_scope_refusal diagnostic_id=%s",
+                    getattr(model, "diagnostic_id", "unavailable"),
+                )
+                return scope_refusal(language), [], False, None, False
             if changes:
                 with progress.step("Ujednolicanie formatu wywołań narzędzi"):
                     pass
@@ -500,8 +551,10 @@ class ChatService:
                         result, record_selection = prepare_record_list(arguments, sparql_results)
                         rendered_table = None
                         if record_selection is not None and arguments.get("render_table", True):
-                            rendered_table = render_record_table(arguments, sparql_results,
-                                                                 self.settings.wikihum_base_url)
+                            rendered_table = render_record_table(
+                                arguments, sparql_results, self.settings.wikihum_base_url,
+                                language=language,
+                            )
                         if result.get("isError"):
                             stage.state = "error"
                     else:

@@ -110,11 +110,15 @@ def markdown_cell(value):
     return re.sub(r"([\\|`*_\[\]])", r"\\\1", value)
 
 
-def render_record_table(arguments, results, base_url):
+def render_record_table(arguments, results, base_url, *, language="pl"):
     entries, headings = collect_records(arguments, results)
     if not entries:
-        return "Nie znaleziono rekordów spełniających warunki wybranej kwerendy."
-    headers = [arguments.get("name_heading", "Nazwa"), "QID", *headings]
+        return ("No records matching the selected query were found." if language == "en" else
+                "Nie znaleziono rekordów spełniających warunki wybranej kwerendy.")
+    name_heading = arguments.get("name_heading", "Nazwa")
+    if language == "en":
+        name_heading = {"Nazwa": "Name", "Miejscowość": "Place", "Osoba": "Person"}[name_heading]
+    headers = [name_heading, "QID", *headings]
     lines = ["| " + " | ".join(markdown_cell(value) for value in headers) + " |",
              "| " + " | ".join("---" for _ in headers) + " |"]
     for identifier, entry in entries.items():

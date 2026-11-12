@@ -32,6 +32,9 @@ def test_concurrent_conversations_do_not_share_context_or_sources():
         async def __aexit__(self, *_):
             pass
 
+        async def check_scope(self, question, history):
+            return True
+
         async def complete(self, messages, tools, **kwargs):
             question = next(item["content"] for item in reversed(messages) if item["role"] == "user")
             qid = "Q101" if question == "sesja A" else "Q202"
@@ -106,7 +109,7 @@ def test_mcp_connection_failure_through_actual_context_manager(monkeypatch, capl
         yield  # pragma: no cover
 
     monkeypatch.setattr("mcp_client.streamable_http_client", failed_transport)
-    model = SimpleNamespace(complete=AsyncMock())
+    model = SimpleNamespace(check_scope=AsyncMock(return_value=True), complete=AsyncMock())
 
     @asynccontextmanager
     async def model_factory(_):

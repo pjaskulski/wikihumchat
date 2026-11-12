@@ -1,6 +1,7 @@
 """WikiHum Chat. Uruchomienie: flask --app app run."""
 
 import asyncio
+import json
 from contextlib import ExitStack
 import logging
 from time import monotonic
@@ -11,7 +12,7 @@ from werkzeug.exceptions import (
 )
 
 from chat_service import ChatService, validate_request
-from config import Settings
+from config import ROOT, Settings
 from errors import ChatError
 from event_stream import ChatEventStream
 from pdf_export import conversation_pdf, export_filename, validate_export
@@ -22,6 +23,7 @@ from web_security import SECURITY_HEADERS, check_request, origin
 def create_app(settings=None, *, chat_service=None, traffic_control=None):
     """Twórz niezależną aplikację; start nie wywołuje modelu ani MCP."""
     settings = settings if settings is not None else Settings.from_env()
+    example_questions = json.loads((ROOT / "example_questions.json").read_text("utf-8"))
     app = Flask(__name__)
     app.config.from_mapping(settings.flask_config())
     app.logger.setLevel(logging.INFO)
@@ -42,6 +44,7 @@ def create_app(settings=None, *, chat_service=None, traffic_control=None):
     def index():
         return render_template(
             "index.html", max_question_chars=settings.chat_max_question_chars,
+            example_questions=example_questions,
             request_timeout_ms=min(int((settings.chat_timeout_seconds + 15) * 1000), 2_147_483_647),
         )
 

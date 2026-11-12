@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from dataclasses import replace
 from time import monotonic
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ import httpx
 
 from errors import ChatError, upstream_error
 from model_diagnostics import request_metadata, response_metadata, write_diagnostic
+from scope_policy import SCOPE_CLASSIFIER, scope_messages
 
 
 class ModelClient:
@@ -26,17 +28,42 @@ class ModelClient:
     async def __aexit__(self, *_):
         await self.http.aclose()
 
-    async def complete(self, messages, tools, *, allow_tools=True, require_tools=False):
+    async def check_scope(self, question, history):
+        settings = replace(self.settings, model_enable_thinking=False, model_reasoning_effort="",
+                           model_temperature=0.0, model_max_output_tokens=256,
+                           model_timeout_seconds=min(30.0, self.settings.model_timeout_seconds))
+        message = await self.complete(scope_messages(question, history), [SCOPE_CLASSIFIER],
+                                      require_tools=True, request_settings=settings, purpose="scope_check")
+        try:
+            calls = message.get("tool_calls") or []
+            if len(calls) != 1 or calls[0]["function"]["name"] != "classify_wikihum_scope":
+                raise ValueError
+            raw = calls[0]["function"]["arguments"]
+            decision = json.loads(raw) if isinstance(raw, str) else raw
+            if (not isinstance(decision, dict) or set(decision) != {"in_scope"}
+                    or type(decision["in_scope"]) is not bool):
+                raise ValueError
+            return decision["in_scope"]
+        except (ValueError, KeyError, TypeError):
+            raise ChatError("scope_invalid_response", "Nie udało się określić zakresu pytania. "
+                            "Spróbuj sformułować je inaczej. Identyfikator diagnostyczny: "
+                            + self.diagnostic_id + ".") from None
+
+    async def complete(self, messages, tools, *, allow_tools=True, require_tools=False,
+                       request_settings=None, purpose=None):
+        settings = request_settings or self.settings
         self.call_index += 1
         event = {
             "diagnostic_id": self.diagnostic_id, "call_index": self.call_index,
-            "request": request_metadata(messages, tools, self.settings, allow_tools, require_tools),
+            "request": request_metadata(messages, tools, settings, allow_tools, require_tools),
             "outcome": "cancelled",
         }
+        if purpose:
+            event["request"]["purpose"] = purpose
         started = monotonic()
         try:
             result = await self._complete(messages, tools, event, allow_tools=allow_tools,
-                                          require_tools=require_tools)
+                                          require_tools=require_tools, request_settings=settings)
             event["outcome"] = "ok"
             return result
         except ChatError as error:
@@ -49,8 +76,8 @@ class ModelClient:
             event["duration_ms"] = round((monotonic() - started) * 1000)
             write_diagnostic(event, self.settings.model_diagnostics_file)
 
-    async def _complete(self, messages, tools, event, *, allow_tools, require_tools):
-        settings = self.settings
+    async def _complete(self, messages, tools, event, *, allow_tools, require_tools, request_settings=None):
+        settings = request_settings or self.settings
         payload = {
             "model": settings.model_name,
             "messages": messages,
