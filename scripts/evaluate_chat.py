@@ -23,10 +23,12 @@ from config import Settings  # noqa: E402
 from mcp_client import connect_mcp  # noqa: E402
 from model_client import ModelClient  # noqa: E402
 from listing_control import plain_label, record_rows  # noqa: E402
+from scope_policy import SCOPE_REFUSAL  # noqa: E402
 
 
 TRACE = ContextVar("evaluation_trace", default=None)
 MODEL_TRACE = ContextVar("evaluation_model_trace", default=None)
+MCP_ACTIVITY = ContextVar("evaluation_mcp_activity", default=None)
 
 
 def prepared_table_in_messages(messages):
@@ -63,6 +65,9 @@ class AuditedMCP:
         self.instructions = client.instructions
 
     async def list_tools(self):
+        activity = MCP_ACTIVITY.get()
+        if activity is not None:
+            activity.append("list_tools")
         return await self.client.list_tools()
 
     async def call_tool(self, name, arguments):
@@ -82,6 +87,9 @@ class AuditedMCP:
 
 @asynccontextmanager
 async def audited_mcp(settings):
+    activity = MCP_ACTIVITY.get()
+    if activity is not None:
+        activity.append("connect")
     async with connect_mcp(settings) as client:
         yield AuditedMCP(client, TRACE.get())
 
@@ -126,6 +134,12 @@ def automatic_checks(case, row):
         "enough_data_calls": len(good) >= case.get("min_data_calls", 1),
         "enough_sources": len(ids) >= case.get("min_sources", 0),
     }
+    if case.get("out_of_scope"):
+        del checks["fresh_data_query"]
+        del checks["enough_data_calls"]
+        checks["fixed_scope_refusal"] = answer == SCOPE_REFUSAL
+        checks["no_mcp_tool_calls"] = not row["tools"]
+        checks["no_mcp_connection_or_catalog"] = row.get("mcp_activity") == []
     if case.get("min_listed_records"):
         listed = set()
         for name, target in record_rows(answer):
@@ -209,9 +223,10 @@ def main():
 
     def evaluate(case, number, history):
         row = {"id": case["id"], "question": case["question"],
-               "history_sent": len(history), "tools": [], "model_requests": []}
+               "history_sent": len(history), "tools": [], "model_requests": [], "mcp_activity": []}
         token = TRACE.set(row["tools"])
         model_token = MODEL_TRACE.set(row["model_requests"])
+        mcp_token = MCP_ACTIVITY.set(row["mcp_activity"])
         started = monotonic()
         try:
             with app.test_client() as client:
@@ -225,6 +240,7 @@ def main():
         finally:
             TRACE.reset(token)
             MODEL_TRACE.reset(model_token)
+            MCP_ACTIVITY.reset(mcp_token)
         row["seconds"] = round(monotonic() - started, 3)
         row["checks"] = automatic_checks(case, row)
         row["technical_status"] = "passed" if all(row["checks"].values()) else "failed"
