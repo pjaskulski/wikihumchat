@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<rect x="2" y="2" width="60" height="60" rx="8"
+        fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+
+<!-- Litera A -->
+<path fill="#d97706" fill-rule="evenodd"
+        d="M8 50 22 14h8l14 36h-9l-3-9H20l-3 9H8Zm15-17h7l-3.5-11L23 33Z"/>
+
+<!-- Szeryfowa litera I -->
+<path fill="#111827"
+        d="M45 14h14v6h-4v24h4v6H45v-6h4V20h-4v-6Z"/>
+</svg>

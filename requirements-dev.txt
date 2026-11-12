@@ -1,0 +1,3 @@
+-r requirements.txt
+-r requirements-diagnostics.txt
+pytest>=8,<10

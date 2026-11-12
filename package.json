@@ -1,0 +1,11 @@
+{
+  "name": "wikihum-chat-ui-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:ui": "node --test tests/ui/*.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^27.0.0"
+  }
+}

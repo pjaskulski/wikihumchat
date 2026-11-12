@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WikiHum Chat</title>
+    <meta name="description" content="Rozmowa z danymi historycznej bazy wiedzy WikiHum.">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script type="module" src="{{ url_for('static', filename='chat.js') }}"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#question">Przejdź do pytania</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="wordmark" href="{{ url_for('index') }}" aria-label="WikiHum Chat — strona główna">
+          <img class="brand-logo" src="{{ url_for('static', filename='image/logo-wiki.png') }}"
+               alt="" width="371" height="371">
+          <span>WikiHum <span class="wordmark-light">Chat</span></span>
+        </a>
+        <nav aria-label="Odnośniki informacyjne">
+          <a href="https://wikihum.lab.dariah.pl/" target="_blank" rel="noopener noreferrer">Baza WikiHum <span aria-hidden="true">↗</span><span class="sr-only"> (nowa karta)</span></a>
+        </nav>
+        <img class="institution-logo" src="{{ url_for('static', filename='image/logo-ihpan.png') }}"
+             alt="Instytut Historii PAN" width="77" height="100">
+      </div>
+    </header>
+
+    <main id="chat-app" class="page" data-question-limit="{{ max_question_chars }}"
+          data-request-timeout="{{ request_timeout_ms }}"
+          data-chat-url="{{ url_for('chat') }}" data-export-url="{{ url_for('export_pdf') }}">
+      <section class="intro" aria-labelledby="page-title">
+        <h1 id="page-title">Zapytaj <span>WikiHum</span></h1>
+        <p class="intro-description">Historyczną bazę wiedzy o osobach i miejscowościach</p>
+      </section>
+
+      <section class="chat-panel" aria-labelledby="conversation-title">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-rule" aria-hidden="true"></span>
+            <h2 id="conversation-title">Bieżąca rozmowa</h2>
+          </div>
+          <div class="panel-actions">
+            <button id="export-pdf" class="button-quiet" type="button" disabled hidden>Pobierz PDF</button>
+            <button id="new-conversation" class="button-quiet" type="button" disabled>
+              <span class="plus-icon" aria-hidden="true">+</span> Nowa rozmowa
+            </button>
+          </div>
+        </div>
+        <p id="export-error" class="export-error" role="alert" hidden></p>
+
+        <div id="conversation-scroll" class="conversation-scroll" tabindex="0" aria-label="Obszar rozmowy">
+          <div id="welcome" class="welcome">
+            <div class="welcome-symbol" aria-hidden="true">
+              <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 5h18v22l-9-4-9 4V5Z"/><path d="M12 11h8M12 16h8"/></svg>
+            </div>
+            <p class="welcome-title">Od czego rozpocząć kwerendę?</p>
+            <p class="welcome-description">Wpisz własne pytanie lub wybierz przykład dotyczący danych obecnych w WikiHum.</p>
+            <div class="examples" aria-label="Przykładowe pytania">
+              <button class="example" type="button" data-question="Znajdź w WikiHum osoby o imieniu i nazwisku Jan Kostka. Podaj odnośniki do rekordów." disabled>
+                <span>Znajdź osoby o imieniu i nazwisku Jan Kostka.</span>
+                <span class="example-arrow" aria-hidden="true">↗</span>
+              </button>
+              <button class="example" type="button" data-question="Kim był Stanisław Bodniak?" disabled>
+                <span>Kim był Stanisław Bodniak?</span>
+                <span class="example-arrow" aria-hidden="true">↗</span>
+              </button>
+              <button class="example" type="button" data-question="Jakich znasz artystów związanych z Krakowem i żyjących w XVI-XVIII wieku?" disabled>
+                <span>Jakich znasz artystów związanych z Krakowem i żyjących w XVI-XVIII wieku?</span>
+                <span class="example-arrow" aria-hidden="true">↗</span>
+              </button>
+              <button class="example" type="button" data-question="Jakie miejscowości będące własnością monarszą znajdowały się w powiecie proszowickim?" disabled>
+                <span>Jakie miejscowości będące własnością monarszą znajdowały się w powiecie proszowickim?</span>
+                <span class="example-arrow" aria-hidden="true">↗</span>
+              </button>
+            </div>
+          </div>
+          <div id="messages" class="messages" role="log" aria-label="Wiadomości rozmowy"
+               aria-live="polite" aria-relevant="additions" aria-atomic="false"></div>
+        </div>
+
+        <div class="composer-area">
+          <div id="chat-status" class="chat-status" role="status" aria-live="polite" aria-atomic="true" hidden>
+            <span class="status-indicator" aria-hidden="true"></span>
+            <span id="status-text"></span>
+          </div>
+          <div id="chat-error" class="chat-error" role="alert" hidden></div>
+          <form id="chat-form" class="composer">
+            <label for="question" class="sr-only">Twoje pytanie do WikiHum</label>
+            <textarea id="question" name="question" rows="3" required disabled
+                      placeholder="Zadaj pytanie dotyczące danych WikiHum…"
+                      aria-describedby="keyboard-hint character-count" autocomplete="off"></textarea>
+            <div class="composer-actions">
+              <span id="keyboard-hint" class="keyboard-hint">Enter wysyła · Shift+Enter — nowy wiersz</span>
+              <div class="send-actions">
+                <span id="character-count" class="character-count">0 / {{ max_question_chars }}</span>
+                <button id="send-question" class="button-primary" type="submit" disabled>
+                  <span>Wyślij</span>
+                  <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 10h11M10 4l6 6-6 6"/></svg>
+                </button>
+              </div>
+            </div>
+          </form>
+          <noscript><p class="noscript-message">Do korzystania z czatu potrzebna jest obsługa JavaScript w przeglądarce.</p></noscript>
+        </div>
+      </section>
+
+      <aside class="information" aria-label="Informacje o odpowiedziach i rozmowie">
+        <p>Odpowiedzi generuje model językowy na podstawie danych WikiHum. Mogą zawierać błędy.</p>
+      </aside>
+    </main>
+    <footer class="site-footer">
+      <span>Pracownia Historii Cyfrowej</span>
+      <a class="footer-contact" href="mailto:lab.dariah@ihpan.edu.pl">
+        <span aria-hidden="true">✉</span> Skontaktuj się z nami
+      </a>
+    </footer>
+  </body>
+</html>

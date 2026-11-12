@@ -158,6 +158,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+!.env.example
 
 # Spyder project settings
 .spyderproject
@@ -218,3 +219,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+.pytest_cache/
+reports/*.json
+logs/
+node_modules/
+deploy/
+AGENTS.md

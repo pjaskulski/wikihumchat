@@ -1,0 +1,69 @@
+[
+  {
+    "id": "artists_cracow",
+    "question": "Jakich znasz artystów związanych z Krakowem i żyjących w XVI-XVIII wieku?",
+    "min_data_calls": 3,
+    "min_listed_records": 8,
+    "min_sources": 8
+  },
+  {
+    "id": "royal_places",
+    "question": "Jakie miejscowości będące własnością monarszą znajdowały się w powiecie proszowickim?",
+    "reference_file": "royal_places_reference.json"
+  },
+  {
+    "id": "unique_person",
+    "question": "Kim według WikiHum był Mikołaj Kopernik? Podaj krótki opis, lata życia i odnośnik do rekordu.",
+    "expected_ids": ["Q158021"],
+    "expected_terms": ["1473", "1543"]
+  },
+  {
+    "id": "ambiguous_person",
+    "question": "Znajdź osoby o imieniu i nazwisku Jan Kostka. Rozróżnij pasujące rekordy na podstawie danych WikiHum i podaj odnośniki. Nie łącz ich biografii.",
+    "expected_ids": ["Q158342", "Q158343"],
+    "expected_terms": ["1581", "1588"]
+  },
+  {
+    "id": "place_aliases",
+    "question": "Wykonaj osobne wyszukiwania w WikiHum fraz Gdańsk i Danzig. Czy w obu wynikach występuje ten sam rekord miasta Gdańsk? Podaj jego odnośnik i odróżnij go od jednostek administracyjnych.",
+    "expected_ids": ["Q31993"],
+    "search_queries": ["Gdańsk", "Danzig"]
+  },
+  {
+    "id": "multi_step",
+    "question": "Porównaj daty śmierci dwóch Janów Kostków: Q158342 i Q158343. Sprawdź osobno oba rekordy w WikiHum. Podaj obie daty, przyporządkuj je do właściwych osób i dodaj odnośniki.",
+    "expected_ids": ["Q158342", "Q158343"],
+    "expected_terms": ["1581", "1588"],
+    "min_data_calls": 2
+  },
+  {
+    "id": "missing_record",
+    "question": "Wyszukaj dokładną frazę WikiHumNieistniejacyRekord987654321. Jeśli brak pasującego rekordu, poinformuj o braku wyników tej kwerendy i nie twórz biografii ani identyfikatora.",
+    "expected_ids": [],
+    "no_sources": true
+  },
+  {
+    "id": "missing_fact",
+    "question": "Czy rekord Jana Kostki, opata oliwskiego (Q158343), podaje imię jego matki? Sprawdź dane WikiHum. Podaj imię wyłącznie, jeśli jest potwierdzone; w przeciwnym razie wskaż brak tej informacji w uzyskanych danych. Dodaj odnośnik do sprawdzonego rekordu.",
+    "expected_ids": ["Q158343"]
+  },
+  {
+    "id": "bibliography",
+    "question": "Jakie źródło wskazuje pole opisano w źródle w rekordzie Jana Kostki Q158343? Sprawdź również rekord tego źródła, podaj dokładny tytuł bez zamiany na podobny tytuł i odnośniki do obu rekordów.",
+    "expected_ids": ["Q158343", "Q607"],
+    "expected_terms": ["Polski Słownik Biograficzny"],
+    "min_data_calls": 2
+  },
+  {
+    "id": "follow_up",
+    "history_from": "ambiguous_person",
+    "question": "Który z nich był opatem oliwskim? Sprawdź ponownie bazę i podaj odnośnik do jego rekordu.",
+    "expected_ids": ["Q158343"],
+    "expected_terms": ["1588"]
+  },
+  {
+    "id": "false_premise",
+    "question": "Ktoś napisał, że Mikołaj Kopernik był królem Polski. Czy dane WikiHum potwierdzają takie określenie? Sprawdź rekord Q158021, wskaż rzeczywisty opis i nie powtarzaj niepotwierdzonego twierdzenia jako ustalenia bazy. Podaj odnośnik.",
+    "expected_ids": ["Q158021"]
+  }
+]

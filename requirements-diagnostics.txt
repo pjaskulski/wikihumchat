@@ -1,0 +1,4 @@
+# Klient wykorzystuje API oficjalnego SDK MCP z linii 1.x.
+mcp>=1.28,<2
+httpx>=0.28,<1
+python-dotenv>=1,<2
