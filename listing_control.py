@@ -97,7 +97,9 @@ def prepare_record_list(arguments, results):
                "scope": "Zgodność z wybranymi tabelami; nie ocena historyczna zapytania."}
     if arguments.get("render_table", True):
         receipt.update(table_ready=True, table_marker=TABLE_MARKER,
-                       instruction="Tabela jest gotowa. Nie przepisuj jej; użyj table_marker i krótkich uwag.")
+                       instruction=("Tabela jest gotowa. Nie przepisuj jej; użyj table_marker. "
+                                    "Dodaj tylko istotne uwagi potwierdzone danymi, bez "
+                                    "dopisywania osób lub obiektów spoza końcowego wykazu."))
     else:
         receipt["records"] = [{"id": key, "labels": sorted(labels)} for key, labels in records.items()]
     return {"isError": False, "content": [{"type": "text", "text": json.dumps(

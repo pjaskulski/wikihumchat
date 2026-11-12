@@ -73,25 +73,37 @@ def item_ids(value, pattern=ITEM_ID):
     return result
 
 
-def summary_messages(messages, question, history, *, table_ready=False, language="pl"):
+def summary_messages(messages, question, history, *, table_ready=False, language="pl",
+                     selected_record_ids=()):
     """Zachowaj wyniki, ale nie kontynuuj protokołu wywołań narzędzi."""
     calls = {
         call["id"]: call["function"]
         for message in messages if message["role"] == "assistant"
         for call in message.get("tool_calls", [])
     }
+    selected_ids = set(selected_record_ids)
+    latest_preparation = next((message["tool_call_id"] for message in reversed(messages)
+                               if message["role"] == "tool"
+                               and calls[message["tool_call_id"]]["name"] == PREPARE_TOOL.name), None)
     evidence = []
     for message in messages:
         if message["role"] != "tool":
             continue
         function = calls[message["tool_call_id"]]
-        if table_ready and function["name"] in {"execute_sparql", READ_TOOL.name}:
-            # Tabelę z pełnych wyników przechowuje i wstawi aplikacja.
-            # Model nie musi ponownie czytać ani przepisywać wszystkich wierszy.
-            continue
+        arguments = json.loads(function["arguments"])
+        if table_ready:
+            # Końcowa tabela jest gotowa. Wstępne wyszukiwania zawierają także
+            # odrzuconych kandydatów; nie są podstawą dopisków pod wykazem.
+            local_receipt = (function["name"] == VERIFY_TOOL.name or
+                             function["name"] == PREPARE_TOOL.name
+                             and message["tool_call_id"] == latest_preparation)
+            selected_details = (function["name"] in {"get_statements", "get_statement_values"}
+                                and arguments.get("entity_id") in selected_ids)
+            if not (local_receipt or selected_details):
+                continue
         evidence.append({
             "tool": function["name"],
-            "arguments": json.loads(function["arguments"]),
+            "arguments": arguments,
             "result": json.loads(message["content"]),
         })
     return [
@@ -112,7 +124,11 @@ def summary_messages(messages, question, history, *, table_ready=False, language
             "i korzystaj tylko z danych, które można potwierdzić."
             " Jeśli prepare_record_list zwróciło table_ready=true, tabela powstaje "
             "w aplikacji: zamiast nazwisk i wierszy użyj [[WIKIHUM_RECORD_LIST]] "
-            "w osobnym akapicie. Dodaj tylko krótkie, potwierdzone wprowadzenie lub uwagi."
+            "w osobnym akapicie. Dodaj tylko krótkie, potwierdzone wprowadzenie lub uwagi. "
+            "Nie dopisuj w uwagach osób lub obiektów spoza końcowego wykazu. "
+            "Sam zawód nie potwierdza związku z miejscem. Nie powołuj się na domniemany "
+            "kontekst historyczny ani na treść źródła, której nie odczytano. "
+            "Jeśli nie masz istotnej uwagi potwierdzonej danymi, zakończ na tabeli."
         ) + response_language_instruction(language)},
         {"role": "user", "content": json.dumps({
             "question": question, "conversation_history": history, "tool_results": evidence,
@@ -314,6 +330,7 @@ class ChatService:
             if table_ready:
                 model_messages = summary_messages(
                     model_messages, question, history, table_ready=True, language=language,
+                    selected_record_ids=record_selection or (),
                 )
             self._check_context(model_messages, [] if text_only else definitions)
             label = ("Przygotowywanie podsumowania" if text_only else
@@ -335,8 +352,10 @@ class ChatService:
                         final_round = True
                         text_only = True
                         packed, _ = memory.pack(messages, [], self.settings.chat_max_context_chars)
-                        model_messages = summary_messages(packed, question, history,
-                                                          table_ready=rendered_table is not None, language=language)
+                        model_messages = summary_messages(
+                            packed, question, history, table_ready=rendered_table is not None,
+                            language=language, selected_record_ids=record_selection or (),
+                        )
                         self._check_context(model_messages, [])
                         label = "Przygotowywanie odpowiedzi z zebranych wyników"
                         logging.getLogger(__name__).warning(
@@ -352,8 +371,10 @@ class ChatService:
                         # Nie pakuj drugi raz już utworzonego podsumowania:
                         # źródłem zawsze są wiadomości z protokołem narzędzi.
                         packed, _ = memory.pack(messages, [], self.settings.chat_max_context_chars)
-                        model_messages = summary_messages(packed, question, history,
-                                                          table_ready=rendered_table is not None, language=language)
+                        model_messages = summary_messages(
+                            packed, question, history, table_ready=rendered_table is not None,
+                            language=language, selected_record_ids=record_selection or (),
+                        )
                         self._check_context(model_messages, [])
                         label = "Przygotowywanie odpowiedzi z zebranych wyników"
                     else:
